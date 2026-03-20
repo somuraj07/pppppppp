@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import prisma from "@/lib/db";
+import { resolveSchoolIdForSessionUser } from "@/lib/schoolAccess";
 import bcrypt from "bcryptjs";
 import { Role } from "@/app/generated/prisma";
 
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const schoolId = session.user.schoolId;
+    const schoolId = await resolveSchoolIdForSessionUser(session.user);
 
     if (!schoolId) {
       return NextResponse.json(

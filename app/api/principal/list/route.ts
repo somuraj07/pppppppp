@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
 import prisma from "@/lib/db";
 import { redis } from "@/lib/redis";
+import { resolveSchoolIdForSessionUser } from "@/lib/schoolAccess";
 import { Role } from "@/app/generated/prisma";
 
 export async function GET() {
@@ -13,24 +14,7 @@ export async function GET() {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    let schoolId = session.user.schoolId;
-
-    // 🔁 Resolve schoolId if missing
-    if (!schoolId) {
-      const adminSchool = await prisma.school.findFirst({
-        where: { admins: { some: { id: session.user.id } } },
-        select: { id: true },
-      });
-
-      schoolId = adminSchool?.id ?? null;
-
-      if (schoolId) {
-        await prisma.user.update({
-          where: { id: session.user.id },
-          data: { schoolId },
-        });
-      }
-    }
+    const schoolId = await resolveSchoolIdForSessionUser(session.user);
 
     if (!schoolId) {
       return NextResponse.json(
@@ -100,7 +84,7 @@ export async function PUT(req: Request) {
       );
     }
 
-    const schoolId = session.user.schoolId;
+    const schoolId = await resolveSchoolIdForSessionUser(session.user);
 
     if (!schoolId) {
       return NextResponse.json(
